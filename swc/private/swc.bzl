@@ -24,6 +24,7 @@ _attrs = {
     "swcrc": attr.label(
         doc = "label of a configuration file for swc, see https://swc.rs/docs/configuration/swcrc",
         allow_single_file = True,
+        mandatory = True,
     ),
     "out_dir": attr.string(
         doc = "base directory for output files",
@@ -84,7 +85,7 @@ def _impl(ctx):
 
     # Add user specified arguments *before* rule supplied arguments
     args.add_all(ctx.attr.args)
-    #args.add_all(["--source-maps", ctx.attr.source_maps])
+    args.add_all(["--source-maps", ctx.attr.source_maps])
 
     if ctx.attr.output_dir:
         if len(ctx.attr.srcs) != 1:
@@ -109,8 +110,6 @@ def _impl(ctx):
             outputs = [out],
             executable = binary,
             progress_message = "Transpiling with swc %s" % ctx.label,
-            # sandboxing is unnecessary with swc which takes an explilit list of srcs via args
-            execution_requirements = {"no-sandbox": "1"},
         )
     else:
         srcs = [_relative_to_package(src.path, ctx) for src in ctx.files.srcs]
@@ -157,7 +156,7 @@ def _impl(ctx):
                 arguments = [
                     args,
                     src_args,
-                    "-f ",
+                    "--filename",
                     src.path,
                 ],
                 outputs = outs,
@@ -171,8 +170,6 @@ def _impl(ctx):
                     ctx.label,
                     src.path,
                 ),
-                # sandboxing is unnecessary with swc which takes an explilit list of srcs via args
-                execution_requirements = {"no-sandbox": "1"},
             )
 
     output_sources_depset = depset(output_sources)
