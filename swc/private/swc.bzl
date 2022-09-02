@@ -11,7 +11,14 @@ _attrs = {
         mandatory = True,
     ),
     "args": attr.string_list(
-        doc = "additional arguments to pass to swc cli, see https://swc.rs/docs/usage/cli",
+        doc = """Additional arguments to pass to swcx cli (NOT swc!).
+        
+        NB: this is not the same as the CLI arguments for @swc/cli npm package.
+        For performance, rules_swc does not call a Node.js program wrapping the swc rust binding.
+        Instead, we directly spawn the (somewhat experimental) native Rust binary shipped inside the
+        @swc/core npm package, which the swc project calls "swcx"
+        Tracking issue for feature parity: https://github.com/swc-project/swc/issues/4017
+        """,
     ),
     "source_maps": attr.string(
         doc = "see https://swc.rs/docs/usage/cli#--source-maps--s",
@@ -25,7 +32,6 @@ _attrs = {
     "swcrc": attr.label(
         doc = "label of a configuration file for swc, see https://swc.rs/docs/configuration/swcrc",
         allow_single_file = True,
-        # mandatory = True,
     ),
     "out_dir": attr.string(
         doc = "base directory for output files",
@@ -91,7 +97,9 @@ def _impl(ctx):
 
     # Add user specified arguments *before* rule supplied arguments
     args.add_all(ctx.attr.args)
-    args.add_all(["--source-maps", ctx.attr.source_maps])
+
+    # FIXME: swcx ignores this, it MUST be in the config file...
+    # args.add_all(["--source-maps", ctx.attr.source_maps])
 
     if ctx.attr.output_dir:
         if len(ctx.attr.srcs) != 1:
