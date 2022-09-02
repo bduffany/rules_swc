@@ -16,8 +16,13 @@ load("//swc:repositories.bzl", "LATEST_VERSION", "swc_register_toolchains")
 
 swc_register_toolchains(
     name = "default_swc",
+    # FIXME: demonstrate pulling whatever version we like, with manual hashes
     swc_version = LATEST_VERSION,
 )
+
+load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
+
+rules_js_dependencies()
 
 load("@rules_nodejs//nodejs:repositories.bzl", "nodejs_register_toolchains")
 

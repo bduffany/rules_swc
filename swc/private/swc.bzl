@@ -1,7 +1,8 @@
 "Internal implementation details"
 
+load("@aspect_rules_js//js:libs.bzl", "js_lib_helpers")
+load("@aspect_rules_js//js:providers.bzl", "js_info")
 load("@bazel_skylib//lib:paths.bzl", "paths")
-load("@aspect_bazel_lib//lib:copy_to_bin.bzl", "copy_file_to_bin_action")
 
 _attrs = {
     "srcs": attr.label_list(
@@ -24,7 +25,7 @@ _attrs = {
     "swcrc": attr.label(
         doc = "label of a configuration file for swc, see https://swc.rs/docs/configuration/swcrc",
         allow_single_file = True,
-        mandatory = True,
+        # mandatory = True,
     ),
     "out_dir": attr.string(
         doc = "base directory for output files",
@@ -80,6 +81,11 @@ def _calculate_map_outs(srcs, source_maps):
 def _impl(ctx):
     outputs = []
     binary = ctx.toolchains["@aspect_rules_swc//swc:toolchain_type"].swcinfo.swc_binary
+
+    # Arguments to pure-rust CLI differ from the Node.js wrapper in @swc/cli.
+    # Feature parity issue: https://github.com/swc-project/swc/issues/4017
+    # To see what's available, you can run help:
+    # $(bazel info output_base)/execroot/aspect_rules_swc/external/default_swc_linux-x64-gnu/package/swc compile --help
     args = ctx.actions.args()
     args.add("compile")
 
@@ -97,18 +103,19 @@ def _impl(ctx):
         output_sources = [output_dir]
 
         args.add_all([
-            ctx.files.srcs[0].path,
             "--out-dir",
-            out.path,
+            output_dir.path,
+            # There is no longer such an option - the rust CLI doesn't go looking for it though
             #"--no-swcrc",
+            # There is no "quiet" flag to the rust CLI.
             #"-q",
         ])
 
-        ctx.actions.run(
+        ctx.actions.run_shell(
             inputs = ctx.files.srcs + ctx.toolchains["@aspect_rules_swc//swc:toolchain_type"].swcinfo.tool_files,
             arguments = [args],
-            outputs = [out],
-            executable = binary,
+            outputs = output_sources,
+            command = binary + " $@ < " + ctx.files.srcs[0].path,
             progress_message = "Transpiling with swc %s" % ctx.label,
         )
     else:
@@ -133,22 +140,24 @@ def _impl(ctx):
             outs = [js_out]
             if ctx.attr.source_maps in ["true", "both"]:
                 outs.append(map_outs[i])
+                src_args.add_all([
+                    "--source-map-target",
+                    map_outs[i].path,
+                ])
 
-            # Pass in the swcrc config if it is set
-            if ctx.file.swcrc:
+            if ctx.attr.swcrc:
                 swcrc_path = ctx.file.swcrc.path
                 swcrc_directory = paths.dirname(swcrc_path)
-                src_args.add("--config-file", swcrc_path)
-                inputs.append(copy_file_to_bin_action(ctx, ctx.file.swcrc))
-            else:
-                pass
-                #src_args.add("--no-swcrc")
+                src_args.add_all([
+                    "--config-file",
+                    swcrc_path,
+                ])
+                inputs.append(ctx.file.swcrc)
 
             src_args.add_all([
                 # src.path,
                 "--out-file",
                 js_out.path,
-                #"-q",
             ])
 
             ctx.actions.run_shell(
