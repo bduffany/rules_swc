@@ -15,6 +15,7 @@ def http_archive(name, **kwargs):
 # ours took precedence. Such breakages are challenging for users, so any
 # changes in this function should be marked as BREAKING in the commit message
 # and released only in semver majors.
+# buildifier: disable=function-docstring
 def rules_swc_dependencies():
     http_archive(
         name = "bazel_skylib",
@@ -43,4 +44,11 @@ def rules_swc_dependencies():
         name = "rules_nodejs",
         sha256 = "5aef09ed3279aa01d5c928e3beb248f9ad32dde6aafe6373a8c994c3ce643064",
         urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/5.5.3/rules_nodejs-core-5.5.3.tar.gz"],
+    )
+
+    http_archive(
+        name = "socat",
+        build_file = "socat.BUILD",
+        sha256 = "d697245144731423ddbbceacabbd29447089ea223e9a439b28f9ff90d0dd216e",
+        urls = ["http://www.dest-unreach.org/socat/download/socat-1.7.4.3.tar.gz"],
     )

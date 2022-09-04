@@ -111,6 +111,7 @@ def _impl(ctx):
         output_sources = [output_dir]
 
         args.add_all([
+            ctx.files.srcs[0].short_path,
             "--out-dir",
             output_dir.path,
             # There is no longer such an option - the rust CLI doesn't go looking for it though
@@ -123,7 +124,22 @@ def _impl(ctx):
             inputs = ctx.files.srcs + ctx.toolchains["@aspect_rules_swc//swc:toolchain_type"].swcinfo.tool_files,
             arguments = [args],
             outputs = output_sources,
-            command = binary + " $@ < " + ctx.files.srcs[0].path,
+
+            # command = "pwd > {}/help".format(output_dir.path), # /shared/cache/bazel/user_base/09a27d1eeea3b44d1580773090924b4d/sandbox/linux-sandbox/90/execroot/aspect_rules_swc
+            # command = "socat - SYSTEM:\"pwd > {}/help\",pty".format(output_dir.path),
+
+            #command = "socat - SYSTEM:\"pwd; ls --color\",pty,setsid,ctty > {}/help".format(output_dir.path),
+            # command = "(pwd; ls) > {}/help".format(output_dir.path),
+            command = "socat - SYSTEM:\"{} compile {} --out-dir {}\",pty".format(binary, ctx.files.srcs[0].path, output_dir.path),
+            #command = "python -c 'import os\n_, slave = os.openpty()\nsubprocess.run(\"{} compile {} --out-dir {}\", check=True, shell=True, stdin=slave, stdout=subprocess.PIPE)'".format(binary, ctx.files.srcs[0].path, output_dir.path),
+            #command = "python -c 'import os\n_, slave = os.openpty()'".format(binary, ctx.files.srcs[0].path, output_dir.path),
+
+            # /bin/bash -c 'socat - EXEC:"external/default_swc_linux-x64-gnu/package/swc --help",pty,setsid,ctty 2>&1 >bazel-out/k8-fastbuild/bin/examples/directory/minify/help' '' compile examples/directory/split_app --out-dir bazel-out/k8-fastbuild/bin/examples/directory/minify
+            # command = "socat - EXEC:\"{0} --help\",pty,setsid,ctty 2>&1 >{2}/help".format(binary, ctx.files.srcs[0].short_path, output_dir.path),
+
+            #command = binary + " $@",
+            #use_default_shell_env = True,
+            mnemonic = "SWCTranspile",
             progress_message = "Transpiling with swc %s" % ctx.label,
         )
     else:
@@ -164,7 +180,7 @@ def _impl(ctx):
 
             src_args.add_all([
                 # src.path,
-                "--out-file",
+                " --out-file",
                 js_out.path,
             ])
 
